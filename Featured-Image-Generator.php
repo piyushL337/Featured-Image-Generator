@@ -427,7 +427,7 @@ class Featured_Image_Generator {
         $font_path = $this->get_font_path();
         
         // Check if we have a TrueType font
-        if (is_string($font_path) && file_exists($font_path)) {
+        if ($font_path !== null) {
             // Use TrueType font
             $max_width = $width - 100;
             $font_size = 40;
@@ -560,12 +560,18 @@ class Featured_Image_Generator {
         
         foreach ($words as $word) {
             $test_line = $current_line . ($current_line ? ' ' : '') . $word;
+            $test_line_length = function_exists('mb_strlen') ? mb_strlen($test_line) : strlen($test_line);
+            $word_length = function_exists('mb_strlen') ? mb_strlen($word) : strlen($word);
             
-            if (strlen($test_line) <= $max_chars) {
+            if ($test_line_length <= $max_chars) {
                 $current_line = $test_line;
             } else {
                 if ($current_line) {
                     $lines[] = $current_line;
+                }
+                // If word is too long, truncate it
+                if ($word_length > $max_chars) {
+                    $word = function_exists('mb_substr') ? mb_substr($word, 0, $max_chars - 3) . '...' : substr($word, 0, $max_chars - 3) . '...';
                 }
                 $current_line = $word;
             }
@@ -587,7 +593,7 @@ class Featured_Image_Generator {
             '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', // Linux
             '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', // Linux alternative
             '/System/Library/Fonts/Helvetica.ttc', // macOS
-            '/System/Library/Fonts/Arial.ttf', // macOS alternative
+            '/System/Library/Fonts/Supplemental/Arial.ttf', // macOS alternative
             'C:\Windows\Fonts\arial.ttf', // Windows
             'C:\Windows\Fonts\verdana.ttf', // Windows alternative
         );
