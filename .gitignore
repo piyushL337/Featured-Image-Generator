@@ -1,0 +1,29 @@
+# WordPress
+wp-config.php
+wp-content/uploads/
+wp-content/blogs.dir/
+wp-content/upgrade/
+wp-content/backup-db/
+wp-content/advanced-cache.php
+wp-content/wp-cache-config.php
+wp-content/cache/
+wp-content/cache/supercache/
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log
+/tmp/
+
+# Node modules (if any)
+node_modules/
+
+# Composer vendor (if any)
+vendor/
