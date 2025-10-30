@@ -424,25 +424,43 @@ class Featured_Image_Generator {
         // Fill background
         imagefilledrectangle($image, 0, 0, $width, $height, $bg_color);
         
-        // Word wrap the title
-        $max_width = $width - 100;
-        $font_size = 40;
-        $wrapped_text = $this->wrap_text($title, $font_size, $max_width);
+        $font_path = $this->get_font_path();
         
-        // Calculate text position (centered)
-        $lines = explode("\n", $wrapped_text);
-        $line_height = $font_size + 20;
-        $total_height = count($lines) * $line_height;
-        $y = ($height - $total_height) / 2 + $font_size;
-        
-        // Draw each line of text
-        foreach ($lines as $line) {
-            $bbox = imagettfbbox($font_size, 0, $this->get_font_path(), $line);
-            $text_width = $bbox[2] - $bbox[0];
-            $x = ($width - $text_width) / 2;
+        // Check if we have a TrueType font
+        if (is_string($font_path) && file_exists($font_path)) {
+            // Use TrueType font
+            $max_width = $width - 100;
+            $font_size = 40;
+            $wrapped_text = $this->wrap_text($title, $font_size, $max_width, $font_path);
             
-            imagettftext($image, $font_size, 0, $x, $y, $text_color, $this->get_font_path(), $line);
-            $y += $line_height;
+            // Calculate text position (centered)
+            $lines = explode("\n", $wrapped_text);
+            $line_height = $font_size + 20;
+            $total_height = count($lines) * $line_height;
+            $y = ($height - $total_height) / 2 + $font_size;
+            
+            // Draw each line of text
+            foreach ($lines as $line) {
+                $bbox = imagettfbbox($font_size, 0, $font_path, $line);
+                $text_width = $bbox[2] - $bbox[0];
+                $x = ($width - $text_width) / 2;
+                
+                imagettftext($image, $font_size, 0, $x, $y, $text_color, $font_path, $line);
+                $y += $line_height;
+            }
+        } else {
+            // Fallback to built-in font
+            $lines = $this->wrap_text_builtin($title, $width - 40);
+            $line_height = 20;
+            $total_height = count($lines) * $line_height;
+            $y = ($height - $total_height) / 2;
+            
+            foreach ($lines as $line) {
+                $text_width = imagefontwidth(5) * strlen($line);
+                $x = ($width - $text_width) / 2;
+                imagestring($image, 5, $x, $y, $line, $text_color);
+                $y += $line_height;
+            }
         }
         
         // Save image
@@ -500,16 +518,16 @@ class Featured_Image_Generator {
     }
     
     /**
-     * Wrap text to fit within max width
+     * Wrap text to fit within max width (for TrueType fonts)
      */
-    private function wrap_text($text, $font_size, $max_width) {
+    private function wrap_text($text, $font_size, $max_width, $font_path) {
         $words = explode(' ', $text);
         $lines = array();
         $current_line = '';
         
         foreach ($words as $word) {
             $test_line = $current_line . ($current_line ? ' ' : '') . $word;
-            $bbox = imagettfbbox($font_size, 0, $this->get_font_path(), $test_line);
+            $bbox = imagettfbbox($font_size, 0, $font_path, $test_line);
             $text_width = $bbox[2] - $bbox[0];
             
             if ($text_width <= $max_width) {
@@ -530,14 +548,48 @@ class Featured_Image_Generator {
     }
     
     /**
+     * Wrap text for built-in fonts
+     */
+    private function wrap_text_builtin($text, $max_width) {
+        $char_width = imagefontwidth(5);
+        $max_chars = floor($max_width / $char_width);
+        
+        $words = explode(' ', $text);
+        $lines = array();
+        $current_line = '';
+        
+        foreach ($words as $word) {
+            $test_line = $current_line . ($current_line ? ' ' : '') . $word;
+            
+            if (strlen($test_line) <= $max_chars) {
+                $current_line = $test_line;
+            } else {
+                if ($current_line) {
+                    $lines[] = $current_line;
+                }
+                $current_line = $word;
+            }
+        }
+        
+        if ($current_line) {
+            $lines[] = $current_line;
+        }
+        
+        return $lines;
+    }
+    
+    /**
      * Get font path
      */
     private function get_font_path() {
         // Try to use system fonts
         $font_paths = array(
             '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', // Linux
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', // Linux alternative
             '/System/Library/Fonts/Helvetica.ttc', // macOS
+            '/System/Library/Fonts/Arial.ttf', // macOS alternative
             'C:\Windows\Fonts\arial.ttf', // Windows
+            'C:\Windows\Fonts\verdana.ttf', // Windows alternative
         );
         
         foreach ($font_paths as $font) {
@@ -546,8 +598,8 @@ class Featured_Image_Generator {
             }
         }
         
-        // Use GD built-in font if no TrueType font available
-        return 5; // Built-in large font
+        // Return null if no TrueType font available
+        return null;
     }
     
     /**
